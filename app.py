@@ -21,7 +21,7 @@ except Exception:
 
 st.set_page_config(
     page_title="Sheraz AI Futures Agent V3",
-    page_icon="ðŸ“ˆ",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -259,7 +259,7 @@ def klines(market_type, symbol, interval, limit=250):
                 return d
         except Exception:
             pass
-    raise RuntimeError(f"{symbol} Ú©Ø§ market data Ù†ÛÛŒÚº Ù…Ù„Ø§Û”")
+    raise RuntimeError(f"{symbol} market data was not available.")
 
 # ------------------------------------------------------------
 # 24h tickers / full market
@@ -426,38 +426,38 @@ def build_signal(d):
 
     if ema9 > ema21:
         long_score += 2
-        reasons_long.append("EMA9ØŒ EMA21 Ú©Û’ Ø§ÙˆÙ¾Ø± ÛÛ’")
+        reasons_long.append("EMA9 is above EMA21")
     else:
         short_score += 2
-        reasons_short.append("EMA9ØŒ EMA21 Ú©Û’ Ù†ÛŒÚ†Û’ ÛÛ’")
+        reasons_short.append("EMA9 is below EMA21")
 
     if price > ema50:
         long_score += 1
-        reasons_long.append("Price EMA50 Ú©Û’ Ø§ÙˆÙ¾Ø± ÛÛ’")
+        reasons_long.append("Price is above EMA50")
     elif price < ema50:
         short_score += 1
-        reasons_short.append("Price EMA50 Ú©Û’ Ù†ÛŒÚ†Û’ ÛÛ’")
+        reasons_short.append("Price is below EMA50")
 
     if 52 <= rsi14 <= 68:
         long_score += 1
-        reasons_long.append("RSI bullish zone Ù…ÛŒÚº ÛÛ’")
+        reasons_long.append("RSI is in a bullish zone")
     elif 32 <= rsi14 <= 48:
         short_score += 1
-        reasons_short.append("RSI bearish zone Ù…ÛŒÚº ÛÛ’")
+        reasons_short.append("RSI is in a bearish zone")
     elif rsi14 > 75:
         short_score += 1
-        reasons_short.append("RSI Ø¨ÛØª Ø²ÛŒØ§Ø¯Û ÛÛ’")
+        reasons_short.append("RSI is very high")
     elif rsi14 < 25:
         long_score += 1
-        reasons_long.append("RSI Ø¨ÛØª Ú©Ù… ÛÛ’")
+        reasons_long.append("RSI is very low")
 
     if vol_ratio >= 1.4:
         if price >= ema9:
             long_score += 1
-            reasons_long.append("Volume Ù…Ø¹Ù…ÙˆÙ„ Ø³Û’ Ú©Ø§ÙÛŒ Ø²ÛŒØ§Ø¯Û ÛÛ’")
+            reasons_long.append("Volume is significantly above normal")
         else:
             short_score += 1
-            reasons_short.append("Volume Ù…Ø¹Ù…ÙˆÙ„ Ø³Û’ Ú©Ø§ÙÛŒ Ø²ÛŒØ§Ø¯Û ÛÛ’")
+            reasons_short.append("Volume is significantly above normal")
 
     # Setup is deliberately conservative: no trade when scores are close.
     if long_score >= 4 and long_score >= short_score + 2:
@@ -485,7 +485,7 @@ def build_signal(d):
         tp1 = np.nan
         tp2 = np.nan
         risk = np.nan
-        reasons = ["EMA/RSI/price structure ÙˆØ§Ø¶Ø­ Ø·ÙˆØ± Ù¾Ø± Ø§ÛŒÚ© Ø·Ø±Ù Ù†ÛÛŒÚº ÛÛ’"]
+        reasons = ["EMA/RSI/price structure is not clearly aligned"]
         score = max(long_score, short_score)
 
     return {
@@ -556,7 +556,7 @@ def candle_chart(d, symbol, interval, direction):
     )
 
     fig.update_layout(
-        title=f"{symbol} â€” {interval} â€” {direction}",
+        title=f"{symbol} - {interval} - {direction}",
         height=650,
         xaxis_rangeslider_visible=False,
         margin=dict(l=10, r=10, t=45, b=10),
@@ -572,41 +572,41 @@ def candle_chart(d, symbol, interval, direction):
 
 def local_answer(question, symbol, market_type, interval, signal, ticker_row):
     q = question.lower()
-    if any(k in q for k in ["long", "buy", "Ù„Ø§Ù†Ú¯", "Ø®Ø±ÛŒØ¯"]):
+    if any(k in q for k in ["long", "buy"]):
         if signal["direction"] == "LONG":
             return (
-                f"{symbol} Ù…ÛŒÚº Ù…ÙˆØ¬ÙˆØ¯Û structure LONG side Ú©ÛŒ Ø·Ø±Ù ÛÛ’Û” "
-                f"Price {fmt_price(signal['price'])}ØŒ EMA9 {fmt_price(signal['ema9'])} "
-                f"Ø§ÙˆØ± RSI {signal['rsi']:.1f} ÛÛ’Û” Suggested entry Ù…ÙˆØ¬ÙˆØ¯Û price Ú©Û’ Ø¢Ø³ Ù¾Ø§Ø³ØŒ "
-                f"SL {fmt_price(signal['stop'])}ØŒ TP1 {fmt_price(signal['tp1'])}ØŒ "
-                f"TP2 {fmt_price(signal['tp2'])}Û” Ù¾Ú¾Ø± Ø¨Ú¾ÛŒ confirmation Ú©Û’ Ø¨ØºÛŒØ± market order Ù†Û Ù„Ú¯Ø§Ø¦ÛŒÚºÛ”"
+                f"{symbol} currently has a LONG-side structure. "
+                f"Price {fmt_price(signal['price'])}, EMA9 {fmt_price(signal['ema9'])} "
+                f"and RSI {signal['rsi']:.1f}. Suggested entry is around the current price, "
+                f"SL {fmt_price(signal['stop'])}, TP1 {fmt_price(signal['tp1'])}, "
+                f"TP2 {fmt_price(signal['tp2'])}. Do not place a market order without confirmation."
             )
         return (
-            f"{symbol} Ù…ÛŒÚº Ø§Ø¨Ú¾ÛŒ ØµØ§Ù LONG setup Ù†ÛÛŒÚº ÛÛ’Û” Ù…ÙˆØ¬ÙˆØ¯Û signal: {signal['direction']}Û” "
-            f"Price {fmt_price(signal['price'])}ØŒ RSI {signal['rsi']:.1f}Û” "
-            f"Better ÛÛ’ confirmation Ú©Ø§ Ø§Ù†ØªØ¸Ø§Ø± Ú©ÛŒØ§ Ø¬Ø§Ø¦Û’Û”"
+            f"{symbol} does not have a clear LONG setup right now. Current signal: {signal['direction']}. "
+            f"Price {fmt_price(signal['price'])}, RSI {signal['rsi']:.1f}. "
+            f"Wait for confirmation before considering a trade."
         )
-    if any(k in q for k in ["short", "sell", "Ø´Ø§Ø±Ù¹", "ÙØ±ÙˆØ®Øª"]):
+    if any(k in q for k in ["short", "sell"]):
         if signal["direction"] == "SHORT":
             return (
-                f"{symbol} Ù…ÛŒÚº Ù…ÙˆØ¬ÙˆØ¯Û structure SHORT side Ú©ÛŒ Ø·Ø±Ù ÛÛ’Û” "
-                f"Price {fmt_price(signal['price'])}ØŒ EMA9 {fmt_price(signal['ema9'])} "
-                f"Ø§ÙˆØ± RSI {signal['rsi']:.1f} ÛÛ’Û” Suggested entry Ù…ÙˆØ¬ÙˆØ¯Û price Ú©Û’ Ø¢Ø³ Ù¾Ø§Ø³ØŒ "
-                f"SL {fmt_price(signal['stop'])}ØŒ TP1 {fmt_price(signal['tp1'])}ØŒ "
-                f"TP2 {fmt_price(signal['tp2'])}Û” Ù¾Ú¾Ø± Ø¨Ú¾ÛŒ confirmation Ú©Û’ Ø¨ØºÛŒØ± market order Ù†Û Ù„Ú¯Ø§Ø¦ÛŒÚºÛ”"
+                f"{symbol} currently has a SHORT-side structure. "
+                f"Price {fmt_price(signal['price'])}, EMA9 {fmt_price(signal['ema9'])} "
+                f"and RSI {signal['rsi']:.1f}. Suggested entry is around the current price, "
+                f"SL {fmt_price(signal['stop'])}, TP1 {fmt_price(signal['tp1'])}, "
+                f"TP2 {fmt_price(signal['tp2'])}. Do not place a market order without confirmation."
             )
         return (
-            f"{symbol} Ù…ÛŒÚº Ø§Ø¨Ú¾ÛŒ ØµØ§Ù SHORT setup Ù†ÛÛŒÚº ÛÛ’Û” Ù…ÙˆØ¬ÙˆØ¯Û signal: {signal['direction']}Û” "
-            f"Price {fmt_price(signal['price'])}ØŒ RSI {signal['rsi']:.1f}Û” "
-            f"Better ÛÛ’ confirmation Ú©Ø§ Ø§Ù†ØªØ¸Ø§Ø± Ú©ÛŒØ§ Ø¬Ø§Ø¦Û’Û”"
+            f"{symbol} does not have a clear SHORT setup right now. Current signal: {signal['direction']}. "
+            f"Price {fmt_price(signal['price'])}, RSI {signal['rsi']:.1f}. "
+            f"Wait for confirmation before considering a trade."
         )
     return (
-        f"{symbol} ({market_type}, {interval}) Ú©Ø§ Ù…ÙˆØ¬ÙˆØ¯Û Ø®Ù„Ø§ØµÛ: "
-        f"Price {fmt_price(signal['price'])}ØŒ direction {signal['direction']}ØŒ "
-        f"EMA9 {fmt_price(signal['ema9'])}ØŒ EMA21 {fmt_price(signal['ema21'])}ØŒ "
-        f"EMA50 {fmt_price(signal['ema50'])}ØŒ RSI {signal['rsi']:.1f}ØŒ "
-        f"Support {fmt_price(signal['support'])}ØŒ Resistance {fmt_price(signal['resistance'])}Û” "
-        f"24h change {fmt_pct(ticker_row.get('change_pct', np.nan))}Û”"
+        f"{symbol} ({market_type}, {interval}) current summary: "
+        f"Price {fmt_price(signal['price'])}, direction {signal['direction']}, "
+        f"EMA9 {fmt_price(signal['ema9'])}, EMA21 {fmt_price(signal['ema21'])}, "
+        f"EMA50 {fmt_price(signal['ema50'])}, RSI {signal['rsi']:.1f}, "
+        f"Support {fmt_price(signal['support'])}, Resistance {fmt_price(signal['resistance'])}. "
+        f"24h change {fmt_pct(ticker_row.get('change_pct', np.nan))}."
     )
 
 def ai_answer(question, context, fallback):
@@ -619,7 +619,7 @@ def ai_answer(question, context, fallback):
         client = OpenAI(api_key=api_key)
         prompt = f"""
 You are Sheraz AI Futures Agent, a market-analysis assistant.
-Answer in Urdu. Use ONLY the supplied live market snapshot for factual claims.
+Answer in clear English. Use ONLY the supplied live market snapshot for factual claims.
 Do not pretend to know future prices. Explain uncertainty.
 When the user asks long/short, give a conditional setup with entry zone,
 stop-loss and targets only if the technical structure supports it; otherwise say NO TRADE.
@@ -634,17 +634,17 @@ USER QUESTION:
         resp = client.responses.create(model=model, input=prompt)
         return resp.output_text
     except Exception as e:
-        return fallback + f"\n\nAI API unavailableØŒ Ø§Ø³ Ù„ÛŒÛ’ built-in analysis Ø¯Ú©Ú¾Ø§ÛŒØ§ Ø¬Ø§ Ø±ÛØ§ ÛÛ’Û”"
+        return fallback + f"\n\nAI API is unavailable, so the built-in analysis is being shown."
 
 # ------------------------------------------------------------
 # App
 # ------------------------------------------------------------
 
-st.title("ðŸ“ˆ Sheraz AI Futures Agent V3")
-st.caption("Live-ish market dashboard â€¢ Candlesticks â€¢ Pump/Dump â€¢ Scanner â€¢ AI Analyst â€¢ Auto order execution Ø¨Ù†Ø¯")
+st.title(" Sheraz AI Futures Agent V3")
+st.caption("Live market dashboard | Candlesticks | Pump/Dump | Scanner | AI Analyst | Automatic order execution disabled")
 
 with st.sidebar:
-    st.header("âš™ï¸ Market Controls")
+    st.header(" Market Controls")
     market_type = st.radio("Market", ["Futures", "Spot"], index=0)
     interval = st.selectbox("Timeframe", list(INTERVALS.keys()), index=2)
     symbols = get_symbols(market_type)
@@ -662,15 +662,15 @@ with st.sidebar:
     )
 
     limit = st.slider("Candles", 100, 500, 250, 50)
-    auto_refresh = st.checkbox("ðŸ”„ Auto refresh (15 sec)", value=False)
-    if st.button("ðŸ”ƒ Refresh now", use_container_width=True):
+    auto_refresh = st.checkbox(" Auto refresh (15 sec)", value=False)
+    if st.button(" Refresh now", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
     st.divider()
     st.info(
-        "ÛŒÛ ÙˆØ±Ú˜Ù† market data Ø§ÙˆØ± analysis Ø¯ÛŒØªØ§ ÛÛ’Û” "
-        "Live/automatic order execution Ø¬Ø§Ù† Ø¨ÙˆØ¬Ú¾ Ú©Ø± Ø¨Ù†Ø¯ ÛÛ’Û”"
+        "This version provides market data and technical analysis. "
+        "Live/automatic order execution    disabled is."
     )
 
 # Auto-refresh is intentionally simple and safe.
@@ -707,7 +707,7 @@ else:
 # Top market view
 # ------------------------------------------------------------
 
-st.subheader("ðŸŒ Ù¾ÙˆØ±ÛŒ Ù…Ø§Ø±Ú©ÛŒÙ¹ Ú©Ø§ ÙÙˆØ±ÛŒ Ù…Ù†Ø¸Ø±")
+st.subheader(" Market Overview")
 
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Price", fmt_price(ticker["price"]))
@@ -728,12 +728,12 @@ with left:
         use_container_width=True,
     )
     st.caption(
-        f"Data source: {d['data_source'].iloc[-1]} â€¢ "
+        f"Data source: {d['data_source'].iloc[-1]}  "
         f"Last candle: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
     )
 
 with right:
-    st.subheader("ðŸ¤– AI Technical Signal")
+    st.subheader(" AI Technical Signal")
     st.metric("Direction", sig["direction"])
     st.metric("RSI", f"{sig['rsi']:.1f}")
     st.metric("EMA9 / EMA21", f"{fmt_price(sig['ema9'])} / {fmt_price(sig['ema21'])}")
@@ -747,11 +747,11 @@ with right:
             f"TP2: {fmt_price(sig['tp2'])}"
         )
     else:
-        st.warning("NO TRADE â€” structure ÙˆØ§Ø¶Ø­ Ù†ÛÛŒÚº ÛÛ’")
+        st.warning("NO TRADE - market structure is not clear")
 
-    st.write("**Ø§ÛÙ… ÙˆØ¬ÙˆÛØ§Øª:**")
+    st.write("**Key Reasons:**")
     for reason in sig["reasons"]:
-        st.write("â€¢ " + reason)
+        st.write(" " + reason)
 
     st.write(
         f"Support: **{fmt_price(sig['support'])}**  \n"
@@ -768,7 +768,7 @@ ob_left, ob_mid, ob_right = st.columns([1, 1, 1])
 bids, asks = order_book(market_type, symbol, 10)
 
 with ob_left:
-    st.subheader("ðŸ“š Order Book")
+    st.subheader(" Order Book")
     if not bids.empty:
         b = bids.copy()
         b["Price"] = b["Price"].map(fmt_price)
@@ -776,35 +776,35 @@ with ob_left:
         st.write("Bids")
         st.dataframe(b, use_container_width=True, hide_index=True)
     else:
-        st.caption("Order book Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚºÛ”")
+        st.caption("Order book is not available.")
 
 with ob_mid:
-    st.subheader("ðŸ“š Ask Side")
+    st.subheader(" Ask Side")
     if not asks.empty:
         a = asks.copy()
         a["Price"] = a["Price"].map(fmt_price)
         a["Qty"] = a["Qty"].map(lambda x: f"{x:,.4f}")
         st.dataframe(a, use_container_width=True, hide_index=True)
     else:
-        st.caption("Ask data Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚºÛ”")
+        st.caption("Ask data is not available.")
 
 with ob_right:
-    st.subheader("ðŸ’° Futures Info")
+    st.subheader(" Futures Info")
     if market_type == "Futures":
         fr = funding_rate(symbol)
         st.metric("Funding Rate", f"{fr:+.4f}%" if np.isfinite(fr) else "-")
-        st.caption("Funding rate periodic futures cost/credit Ú©Ø§ Ø§Ø´Ø§Ø±Û ÛÛ’Û”")
+        st.caption("Funding rate is an indicator of the periodic futures cost/credit.")
     else:
         st.metric("Market", "Spot")
-        st.caption("Spot Ù…ÛŒÚº funding rate Ù†ÛÛŒÚº ÛÙˆØªØ§Û”")
+        st.caption("Spot markets do not have a funding rate.")
 
 # ------------------------------------------------------------
 # Pump / Dump
 # ------------------------------------------------------------
 
-st.subheader("ðŸš€ Pump / Dump Scanner")
+st.subheader(" Pump / Dump Scanner")
 if ticks.empty:
-    st.warning("Full market ticker Ø§Ø¨Ú¾ÛŒ Ø¯Ø³ØªÛŒØ§Ø¨ Ù†ÛÛŒÚºÛ”")
+    st.warning("Full market ticker is not available right now.")
 else:
     movers = ticks.copy()
     movers["abs_change"] = movers["change_pct"].abs()
@@ -812,7 +812,7 @@ else:
 
     p1, p2 = st.columns(2)
     with p1:
-        st.write("### ðŸš€ Top Pumpers")
+        st.write("###  Top Pumpers")
         pump = ticks.sort_values("change_pct", ascending=False).head(15).copy()
         pump["Price"] = pump["price"].map(fmt_price)
         pump["24h %"] = pump["change_pct"].map(fmt_pct)
@@ -824,7 +824,7 @@ else:
         )
 
     with p2:
-        st.write("### ðŸ”» Top Dumpers")
+        st.write("###  Top Dumpers")
         dump = ticks.sort_values("change_pct", ascending=True).head(15).copy()
         dump["Price"] = dump["price"].map(fmt_price)
         dump["24h %"] = dump["change_pct"].map(fmt_pct)
@@ -839,7 +839,7 @@ else:
 # Full market list
 # ------------------------------------------------------------
 
-st.subheader("ðŸ“‹ Exchange Market List â€” USDT Pairs")
+st.subheader(" Exchange Market List - USDT Pairs")
 if not ticks.empty:
     table = ticks.copy()
     table["Price"] = table["price"].map(fmt_price)
@@ -859,7 +859,7 @@ if not ticks.empty:
 # Multi-coin scanner
 # ------------------------------------------------------------
 
-st.subheader("ðŸ”Ž Multi-Coin Technical Scanner")
+st.subheader(" Multi-Coin Technical Scanner")
 scan_text = st.text_input(
     "Coins to scan (comma separated)",
     "BTCUSDT,ETHUSDT,BNBUSDT,SOLUSDT,XRPUSDT,KAVAUSDT",
@@ -904,11 +904,11 @@ if scan_button:
 # AI chat
 # ------------------------------------------------------------
 
-st.subheader("ðŸ’¬ Market AI â€” Ù…Ø¬Ú¾ Ø³Û’ Ù¾ÙˆÚ†Ú¾ÛŒÚº")
+st.subheader(" Market AI - Ask Me")
 st.caption(
-    "Ù…Ø«Ø§Ù„: 'BTCUSDT Ø§Ø¨Ú¾ÛŒ Ú©ÛŒØ§ Ú©Ø± Ø±ÛØ§ ÛÛ’ØŸ'ØŒ "
-    "'KAVAUSDT Ù…ÛŒÚº long setup Ú©ÛØ§Úº ÛÛ’ØŸ'ØŒ "
-    "'Ø§Ø¨Ú¾ÛŒ short Ø¨ÛØªØ± ÛÛ’ ÛŒØ§ waitØŸ'"
+    "Examples: 'What is BTCUSDT doing now?', "
+    "'Where is the KAVAUSDT long setup?', "
+    "'Is short better now or should I wait?'"
 )
 
 context = f"""
@@ -935,11 +935,11 @@ TP2: {fmt_price(sig['tp2'])}
 """
 
 question = st.text_input(
-    "Ø§Ù¾Ù†Ø§ Ø³ÙˆØ§Ù„ Ù„Ú©Ú¾ÛŒÚº",
-    placeholder="Ù…Ø«Ù„Ø§Ù‹: BTCUSDT Ú©Ùˆ Ø§Ø¨Ú¾ÛŒ long Ú©Ø±ÙˆÚº ÛŒØ§ waitØŸ",
+    "Ask your market question",
+    placeholder="Example: Should I long BTCUSDT now or wait?",
 )
 
-if st.button("ðŸ¤– AI Ø³Û’ Ø¬ÙˆØ§Ø¨ Ù„ÛŒÚº", type="primary"):
+if st.button(" Ask AI", type="primary"):
     fallback = local_answer(
         question or "market overview",
         symbol,
@@ -953,6 +953,6 @@ if st.button("ðŸ¤– AI Ø³Û’ Ø¬ÙˆØ§Ø¨ Ù„ÛŒÚº", type="prim
 
 st.divider()
 st.caption(
-    "âš ï¸ ÛŒÛ tool live market data Ú©ÛŒ Ø¨Ù†ÛŒØ§Ø¯ Ù¾Ø± technical analysis Ú©Ø±ØªØ§ ÛÛ’Ø› "
-    "ÛŒÛ Ù…Ø³ØªÙ‚Ø¨Ù„ Ú©ÛŒ Ù‚ÛŒÙ…Øª ÛŒØ§ profit Ú©ÛŒ Ø¶Ù…Ø§Ù†Øª Ù†ÛÛŒÚº Ø¯ÛŒØªØ§Û” Live/automatic order placement Ø¨Ù†Ø¯ ÛÛ’Û”"
+    "This tool performs technical analysis using live market data. "
+    "It does not guarantee future prices or profit. Live/automatic order placement is disabled."
 )
