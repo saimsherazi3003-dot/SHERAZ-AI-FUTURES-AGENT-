@@ -21,16 +21,16 @@ BYBIT = "https://api.bybit.com"
 
 
 @st.cache_data(ttl=15)
+@st.cache_data(ttl=15)
 def klines(symbol, interval, limit=250):
     """
-    پہلے Binance Futures سے data لینے کی کوشش۔
-    اگر Binance 451/403/connection error دے تو Bybit Linear Futures
-    سے public market data استعمال کیا جائے گا۔
+    Binance Futures → Bybit Linear Futures → OKX Futures
+    public market data حاصل کرنے کی کوشش۔
     """
 
-    # -----------------------------
+    # ==============================
     # 1) Binance Futures
-    # -----------------------------
+    # ==============================
     try:
         r = requests.get(
             f"{BINANCE}/fapi/v1/klines",
@@ -46,30 +46,44 @@ def klines(symbol, interval, limit=250):
         if r.status_code == 200:
             data = r.json()
 
-            cols = [
-                "open_time", "open", "high", "low", "close", "volume",
-                "close_time", "quote_volume", "trades",
-                "taker_buy_base", "taker_buy_quote", "ignore"
-            ]
+            if isinstance(data, list) and len(data) > 0:
+                cols = [
+                    "open_time",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "close_time",
+                    "quote_volume",
+                    "trades",
+                    "taker_buy_base",
+                    "taker_buy_quote",
+                    "ignore"
+                ]
 
-            d = pd.DataFrame(data, columns=cols)
+                d = pd.DataFrame(data, columns=cols)
 
-            for c in [
-                "open", "high", "low", "close",
-                "volume", "quote_volume"
-            ]:
-                d[c] = pd.to_numeric(d[c], errors="coerce")
+                for c in [
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "quote_volume"
+                ]:
+                    d[c] = pd.to_numeric(d[c], errors="coerce")
 
-            d["data_source"] = "Binance Futures"
+                d["data_source"] = "Binance Futures"
 
-            return d
+                return d
 
     except Exception:
         pass
 
-    # -----------------------------
+    # ==============================
     # 2) Bybit Linear Futures
-    # -----------------------------
+    # ==============================
     bybit_interval = {
         "1m": "1",
         "5m": "5",
@@ -91,67 +105,131 @@ def klines(symbol, interval, limit=250):
             headers={"User-Agent": "Mozilla/5.0"}
         )
 
-        r.raise_for_status()
+        if r.status_code == 200:
+            result = r.json()
 
-        payload = r.json()
+            if result.get("retCode") == 0:
+                rows = result.get("result", {}).get("list", [])
 
-        if payload.get("retCode") != 0:
-            raise RuntimeError(
-                payload.get("retMsg", "Bybit data error")
-            )
+                if rows:
+                    rows = list(reversed(rows))
 
-        rows = payload["result"]["list"]
+                    d = pd.DataFrame(
+                        rows,
+                        columns=[
+                            "open_time",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "volume",
+                            "turnover"
+                        ]
+                    )
 
-        if not rows:
-            raise RuntimeError("No market data returned")
+                    for c in [
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "turnover"
+                    ]:
+                        d[c] = pd.to_numeric(
+                            d[c],
+                            errors="coerce"
+                        )
 
-        # Bybit format:
-        # [startTime, open, high, low, close, volume, turnover]
+                    d["open_time"] = pd.to_numeric(
+                        d["open_time"],
+                        errors="coerce"
+                    )
 
-        rows = list(reversed(rows))
+                    d["data_source"] = "Bybit Linear Futures"
 
-        d = pd.DataFrame(
-            rows,
-            columns=[
-                "open_time",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "quote_volume"
-            ]
+                    return d
+
+    except Exception:
+        pass
+
+    # ==============================
+    # 3) OKX Futures
+    # ==============================
+    okx_bar = {
+        "1m": "1m",
+        "5m": "5m",
+        "15m": "15m",
+        "30m": "30m",
+        "1h": "1H"
+    }.get(interval, "5m")
+
+    okx_symbol = symbol.replace("USDT", "-USDT-SWAP")
+
+    try:
+        r = requests.get(
+            "https://www.okx.com/api/v5/market/candles",
+            params={
+                "instId": okx_symbol,
+                "bar": okx_bar,
+                "limit": min(limit, 300)
+            },
+            timeout=10,
+            headers={"User-Agent": "Mozilla/5.0"}
         )
 
-        d["open_time"] = pd.to_numeric(
-            d["open_time"], errors="coerce"
-        )
+        if r.status_code == 200:
+            result = r.json()
 
-        for c in [
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "quote_volume"
-        ]:
-            d[c] = pd.to_numeric(d[c], errors="coerce")
+            if result.get("code") == "0":
+                rows = result.get("data", [])
 
-        d["close_time"] = d["open_time"]
+                if rows:
+                    rows = list(reversed(rows))
 
-        d["trades"] = 0
-        d["taker_buy_base"] = 0
-        d["taker_buy_quote"] = 0
-        d["ignore"] = 0
+                    d = pd.DataFrame(
+                        rows,
+                        columns=[
+                            "open_time",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "volume",
+                            "volume_currency",
+                            "volume_quote",
+                            "confirm"
+                        ]
+                    )
 
-        d["data_source"] = "Bybit Linear Futures (fallback)"
+                    for c in [
+                        "open",
+                        "high",
+                        "low",
+                        "close",
+                        "volume",
+                        "volume_currency",
+                        "volume_quote"
+                    ]:
+                        d[c] = pd.to_numeric(
+                            d[c],
+                            errors="coerce"
+                        )
 
-        return d
+                    d["open_time"] = pd.to_numeric(
+                        d["open_time"],
+                        errors="coerce"
+                    )
 
-    except Exception as e:
-        raise RuntimeError(
-            f"Binance اور Bybit دونوں سے market data حاصل نہیں ہو سکا: {e}"
-        )
+                    d["data_source"] = "OKX Futures"
+
+                    return d
+
+    except Exception:
+        pass
+
+    raise RuntimeError(
+        "Binance، Bybit اور OKX تینوں سے market data حاصل نہیں ہو سکا۔"
+    )
 
 
 def ema(s, n):
